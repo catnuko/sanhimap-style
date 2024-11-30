@@ -1,4 +1,5 @@
 const std = @import("std");
+//https://github.com/JakubSzark/zig-string/blob/master/zig-string.zig
 pub fn codePointAt(string: []const u8, index: usize)?u21{
     const real_index = getIndex(string,index,true) orelse unreachable;
     const size = getUTF8Size(string[real_index]);
@@ -29,10 +30,6 @@ pub inline fn getUTF8Size(char: u8) u3 {
 pub inline fn isUTF8Byte(byte: u8) bool {
     return ((byte & 0x80) > 0) and (((byte << 1) & 0x80) == 0);
 }
-pub fn substringClone(allocator:std.mem.Allocator,string: []const u8, start: usize, end: usize) ![]const u8 {
-    const str = substring(string, start, end);
-    return try allocator.dupe(u8, str);
-}
 pub fn substring(string: []const u8, start: usize, end: usize) []const u8 {
     const vStart = @min(start, end);
     const vEnd = @max(start, end);
@@ -48,6 +45,15 @@ pub fn substring(string: []const u8, start: usize, end: usize) []const u8 {
         std.debug.print("start index out of range\n",.{});
         return ""
     }
+}
+pub fn includes(string:[]const u8,needle:[]const u8)bool{
+    if(string.len == 0 or needle.len == 0) return false;
+    const found_index = std.mem.indexOf(u8, string, needle);
+    if (found_index == null) {
+        return false;
+    } else{
+        return true;
+    };
 }
 test "string.substring" {
     const str = "你好,hello,world";

@@ -1,14 +1,13 @@
 const std = @import("std");
 const json = std.json;
 const testing = std.testing;
-
+const console = @import("./console.zig");
 
 pub fn main() !void {
     // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     // defer _ = gpa.deinit();
     // const allocator = gpa.allocator();
 
-    // Deserialize JSON
     // const json_str =
     //     \\{
     //     \\  "userid": 103609,
@@ -24,7 +23,7 @@ pub fn main() !void {
     // defer parsed.deinit();
 
     // var value = parsed.value;
-    // std.debug.print("{any}\n",.{@TypeOf(value.access_privileges[0])}); 
+    // std.debug.print("{any}\n",.{parsed}); 
     // try testing.expect(value.userid == 103609);
     // try testing.expect(value.verified);
     // try testing.expectEqualStrings("你好", value.access_privileges[0]);
@@ -47,4 +46,5 @@ pub fn main() !void {
     // ,
     //     new_json_str,
     // );
+
 }
