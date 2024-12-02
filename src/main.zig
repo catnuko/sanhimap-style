@@ -4,26 +4,28 @@ const testing = std.testing;
 const console = @import("./console.zig");
 
 pub fn main() !void {
-    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    // defer _ = gpa.deinit();
-    // const allocator = gpa.allocator();
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
 
-    // const json_str =
-    //     \\{
-    //     \\  "userid": 103609,
-    //     \\  "verified": true,
-    //     \\  "access_privileges": [
-    //     \\    "你好",
-    //     \\    "admin"
-    //     \\  ]
-    //     \\}
-    // ;
-    // const T = struct { userid: i32, verified: bool, access_privileges: [][]u8 };
-    // const parsed = try json.parseFromSlice(T, allocator, json_str, .{});
-    // defer parsed.deinit();
+    const json_str =
+        \\{
+        \\  "userid": 103609,
+        \\  "verified": true,
+        \\  "access_privileges": [
+        \\    "你好",
+        \\    "admin",
+        \\     3
+        \\  ]
+        \\}
+    ;
+    const P = json.Value;
+    const T = struct { userid: i32, verified: bool, access_privileges: []P };
+    const parsed = try json.parseFromSlice(T, allocator, json_str, .{});
+    defer parsed.deinit();
 
-    // var value = parsed.value;
-    // std.debug.print("{any}\n",.{parsed}); 
+    const value = parsed.value;
+    std.debug.print("{any}\n", .{value});
     // try testing.expect(value.userid == 103609);
     // try testing.expect(value.verified);
     // try testing.expectEqualStrings("你好", value.access_privileges[0]);
@@ -46,5 +48,4 @@ pub fn main() !void {
     // ,
     //     new_json_str,
     // );
-
 }

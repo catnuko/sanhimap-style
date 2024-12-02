@@ -1,19 +1,38 @@
-
-const ExprVisitor = @import("./ExprVisitor.zig");
 const std = @import("std");
-pub const OperatorDescriptor = struct{
-    name:[]const u8,
-    isDynamicOperator:?*const fn(call:CallExpr)bool = null,
-    call:*const fn(context:ExprEvaluatorContext,call:CallExpr)Value,
-    partialEvaluate:*const fn(context:ExprEvaluatorContext,call:CallExpr)Value = null,
-}
-pub const ExprEvaluatorContext = struct{
-    
-}
+const Expr = @import("./Expr.zig");
+const alloc = @import("./alloc.zig");
+const Env = @import("./Env.zig").MapEnv;
+const Value = std.json.Value;
+pub const OperatorDescriptor = struct {
+    name: []const u8,
+    isDynamicOperator: ?*const fn (call: Expr.CallExpr) bool = null,
+    call: *const fn (context: ExprEvaluatorContext, call: Expr.CallExpr) Value,
+    partialEvaluate: *const fn (context: ExprEvaluatorContext, call: Expr.CallExpr) Value = null,
+};
+pub const ExprEvaluatorContext = struct {
+    evaluator: Expr.ExprVisitor,
+    env: Env,
+    scope: Expr.ExprScope,
+    cache: std.AutoHashMap(Expr.Expr, Value),
+    const Self = @This();
+    pub fn evaluate(self:*Self,expr:Expr.Expr)Value{
+        if(self.cache.get(expr))|cachedResult|{
+            return cachedResult;
+        }
+        else{
+            const result = expr.accept(self.evaluator,self);
+            self.cache.put(expr, result);
+            return result;
+        }
+    }
+    pub fn wrapValue(self:*Self,value:Value)Expr{
+        return Expr.createLiteralExprFromValue(value);
+    }
+};
 
-var operatorDescriptors:std.StringMap(OperatorDescriptor) = undefined;
-pub fn init(alloc:std.mem.Allocator)Self{
-    operatorDescriptors = std.StringMap(OperatorDescriptor).init(alloc) catch unreachable;
+var operatorDescriptors: std.StringMap(OperatorDescriptor) = undefined;
+pub fn init() void {
+    operatorDescriptors = std.StringMap(OperatorDescriptor).init(alloc.get()) catch unreachable;
     defineOperators(CastOperators);
     defineOperators(ComparisonOperators);
     defineOperators(MathOperators);
@@ -28,62 +47,58 @@ pub fn init(alloc:std.mem.Allocator)Self{
     defineOperators(MapOperators);
     defineOperators(VectorOperators);
 }
-pub fn defineOperators()void{
-
+pub fn defineOperators() void {}
+pub fn getOperator(op: []const u8) void {}
+fn visitNullLiteralExpr(_: Expr.NullLiteralExpr, _: ExprEvaluatorContext) Value {
+    return .null;
 }
-fn visitNullLiteralExpr(expr: NullLiteralExpr, _: Context) void{
-
-}
-fn visitBooleanLiteralExpr:(expr: BooleanLiteralExpr, _: Context) void{
+fn visitBooleanLiteralExpr(expr: Expr.BooleanLiteralExpr, _: ExprEvaluatorContext) Value {
     return expr.value;
 }
-fn visitNumberLiteralExpr:(expr: NumberLiteralExpr, _: Context) void{
+fn visitNumberLiteralExpr(expr: Expr.NumberLiteralExpr, _: ExprEvaluatorContext) Value {
     return expr.value;
 }
-fn visitStringLiteralExpr:(expr: StringLiteralExpr, _: Context) void{
+fn visitStringLiteralExpr(expr: Expr.StringLiteralExpr, _: ExprEvaluatorContext) Value {
     return expr.value;
 }
-fn visitObjectLiteralExpr:(expr: ObjectLiteralExpr, _: Context) void{
+fn visitObjectLiteralExpr(expr: Expr.ObjectLiteralExpr, _: ExprEvaluatorContext) Value {
+    return expr.value;
+}
+fn visitVarExpr(expr: Expr.VarExpr, context: ExprEvaluatorContext) Value {
+    const value = context.env.lookup(expr.name);
+    return value;
+}
+fn visitHasAttributeExpr(expr: Expr.HasAttributeExpr, context: ExprEvaluatorContext) Value {
+    if (context.env.lookup(expr.name)) |_| {
+        return .{ .bool = true };
+    } else {
+        return .{ .bool = false };
+    }
+}
+fn visitCallExpr(expr: Expr.CallExpr, context: ExprEvaluatorContext) Value {
 
 }
-fn visitVarExpr:(expr: VarExpr, context: Context) void{
-
+fn visitLookupExpr(expr: Expr.LookupExpr, context: ExprEvaluatorContext) Value {}
+fn visitMatchExpr(expr: Expr.MatchExpr, context: ExprEvaluatorContext) Value {
+    const r = context.
 }
-fn visitHasAttributeExpr:(expr: HasAttributeExpr, context: Context) void{
-
-}
-fn visitCallExpr:(expr: CallExpr, context: Context) void{
-
-}
-fn visitLookupExpr:(expr: LookupExpr, context: Context) void{
-
-}
-fn visitMatchExpr:(expr: MatchExpr, context: Context) void{
-
-}
-fn visitCaseExpr:(expr: CaseExpr, context: Context) void{
-
-}
-fn visitStepExpr:(expr: StepExpr, context: Context) void{
-
-}
-fn visitInterpolateExpr:(expr: InterpolateExpr, context: Context) void{
-
-}
-pub fn exprVisitor()ExprVisitor{
+fn visitCaseExpr(expr: Expr.CaseExpr, context: ExprEvaluatorContext) Value {}
+fn visitStepExpr(expr: Expr.StepExpr, context: ExprEvaluatorContext) Value {}
+fn visitInterpolateExpr(expr: Expr.InterpolateExpr, context: ExprEvaluatorContext) Value {}
+pub fn exprVisitor() Expr.ExprVisitor {
     return .{
         .visitNullLiteralExpr = visitNullLiteralExpr,
-        .visitBooleanLiteralExpr: = visitBooleanLiteralExpr,
-        .visitNumberLiteralExpr: = visitNumberLiteralExpr,
-        .visitStringLiteralExpr: = visitStringLiteralExpr,
-        .visitObjectLiteralExpr: = visitObjectLiteralExpr,
-        .visitVarExpr: = visitVarExpr,
-        .visitHasAttributeExpr: = visitHasAttributeExpr,
-        .visitCallExpr: = visitCallExpr,
-        .visitLookupExpr: = visitLookupExpr,
-        .visitMatchExpr: = visitMatchExpr,
-        .visitCaseExpr: = visitCaseExpr,
-        .visitStepExpr: = visitStepExpr,
-        .visitInterpolateExpr: = visitInterpolateExpr,
+        .visitBooleanLiteralExpr = visitBooleanLiteralExpr,
+        .visitNumberLiteralExpr = visitNumberLiteralExpr,
+        .visitStringLiteralExpr = visitStringLiteralExpr,
+        .visitObjectLiteralExpr = visitObjectLiteralExpr,
+        .visitVarExpr = visitVarExpr,
+        .visitHasAttributeExpr = visitHasAttributeExpr,
+        .visitCallExpr = visitCallExpr,
+        .visitLookupExpr = visitLookupExpr,
+        .visitMatchExpr = visitMatchExpr,
+        .visitCaseExpr = visitCaseExpr,
+        .visitStepExpr = visitStepExpr,
+        .visitInterpolateExpr = visitInterpolateExpr,
     };
 }

@@ -1,16 +1,3 @@
-visitNullLiteralExpr:*const fn (expr: NullLiteralExpr, context: Context) void,
-visitBooleanLiteralExpr: *const fn (expr: BooleanLiteralExpr, context: Context) void,
-visitNumberLiteralExpr: *const fn (expr: NumberLiteralExpr, context: Context) void,
-visitStringLiteralExpr: *const fn (expr: StringLiteralExpr, context: Context) void,
-visitObjectLiteralExpr: *const fn (expr: ObjectLiteralExpr, context: Context) void,
-visitVarExpr: *const fn (expr: VarExpr, context: Context) void,
-visitHasAttributeExpr: *const fn (expr: HasAttributeExpr, context: Context) void,
-visitCallExpr: *const fn (expr: CallExpr, context: Context) void,
-visitLookupExpr: *const fn (expr: LookupExpr, context: Context) void,
-visitMatchExpr: *const fn (expr: MatchExpr, context: Context) void,
-visitCaseExpr: *const fn (expr: CaseExpr, context: Context) void,
-visitStepExpr: *const fn (expr: StepExpr, context: Context) void,
-visitInterpolateExpr: *const fn (expr: InterpolateExpr, context: Context) void,
 // pub const ExprVisitor = struct {
 //     const Self = @This();
 //     pub const VTable = struct {
@@ -68,7 +55,7 @@ visitInterpolateExpr: *const fn (expr: InterpolateExpr, context: Context) void,
 //                 return ptr_info.Pointer.child.visitCallExpr(self, expr, context);
 //             }
 //             pub fn visitLookupExpr(ctx: *anyopaque, expr: LookupExpr, context: Context) void {
-//                 const self: T = @ptrCast(@alignCast(ctx));                
+//                 const self: T = @ptrCast(@alignCast(ctx));
 //                 return ptr_info.Pointer.child.visitLookupExpr(self, expr, context);
 //             }
 //             pub fn visitMatchExpr(ctx: *anyopaque, expr: MatchExpr, context: Context) void {
