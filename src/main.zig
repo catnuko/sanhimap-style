@@ -3,49 +3,47 @@ const json = std.json;
 const testing = std.testing;
 const console = @import("./console.zig");
 
+pub fn parseJson(allocator: std.mem.Allocator, input: []const u8) !json.Value {
+    var parser = json.Parser.init(allocator, false);
+    defer parser.deinit();
+
+    var tree = try parser.parse(input);
+    defer tree.deinit();
+
+    return convertAllNumbersToFloat(allocator, tree.root);
+}
+
+fn convertAllNumbersToFloat(allocator: std.mem.Allocator, value: json.Value) !json.Value {
+    switch (value) {
+        .Integer => |i| return json.Value{ .Float = @floatFromInt(i) },
+        .Float => return value,
+        .Object => |o| {
+            var new_object = json.ObjectMap.init(allocator);
+            var it = o.iterator();
+            while (it.next()) |entry| {
+                const new_value = try convertAllNumbersToFloat(allocator, entry.value_ptr.*);
+                try new_object.put(entry.key_ptr.*, new_value);
+            }
+            return json.Value{ .Object = new_object };
+        },
+        .Array => |a| {
+            var new_array = std.ArrayList(json.Value).init(allocator);
+            for (a.items) |item| {
+                const new_item = try convertAllNumbersToFloat(allocator, item);
+                try new_array.append(new_item);
+            }
+            return json.Value{ .Array = new_array };
+        },
+        else => return value,
+    }
+}
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    const json_str =
-        \\{
-        \\  "userid": 103609,
-        \\  "verified": true,
-        \\  "access_privileges": [
-        \\    "你好",
-        \\    "admin",
-        \\     3
-        \\  ]
-        \\}
+    const allocator = std.heap.page_allocator;
+    const json_string =
+        \\{"integer": 42, "float": 3.14, "nested": {"array": [1, 2, 3]}}
     ;
-    const P = json.Value;
-    const T = struct { userid: i32, verified: bool, access_privileges: []P };
-    const parsed = try json.parseFromSlice(T, allocator, json_str, .{});
-    defer parsed.deinit();
+    var value = try parseJson(allocator, json_string);
+    defer value.deinit();
 
-    const value = parsed.value;
-    std.debug.print("{any}\n", .{value});
-    // try testing.expect(value.userid == 103609);
-    // try testing.expect(value.verified);
-    // try testing.expectEqualStrings("你好", value.access_privileges[0]);
-    // try testing.expectEqualStrings("admin", value.access_privileges[1]);
-
-    // // Serialize JSON
-    // value.verified = false;
-    // const new_json_str = try json.stringifyAlloc(allocator, value, .{ .whitespace = .indent_2 });
-    // defer allocator.free(new_json_str);
-
-    // try testing.expectEqualStrings(
-    //     \\{
-    //     \\  "userid": 103609,
-    //     \\  "verified": false,
-    //     \\  "access_privileges": [
-    //     \\    "你好",
-    //     \\    "admin"
-    //     \\  ]
-    //     \\}
-    // ,
-    //     new_json_str,
-    // );
+    std.debug.print("{}\n", .{value});
 }

@@ -5,8 +5,8 @@ const alloc = @import("./alloc.zig");
 pub const MapEnv = struct {
     const Self = @This();
     entries: ValueMap,
-    parent: *MapEnv,
-    pub fn new(entries: ValueMap, parent: *MapEnv) Self {
+    parent: ?*MapEnv,
+    pub fn new(entries: ValueMap, parent: ?*MapEnv) Self {
         return Self{ .entries = entries, .parent = parent };
     }
     pub fn lookup(self: *Self, name: []const u8) ?Value {

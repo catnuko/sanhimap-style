@@ -156,7 +156,7 @@ fn isIdentChar(codepoint: u32) bool {
         codepoint == Character.LBracket or
         codepoint == Character.RBracket);
 }
-
+const console = @import("./console.zig");
 const Lexer = struct {
     const Self = @This();
     m_token: Token = Token.Error,
@@ -174,6 +174,13 @@ const Lexer = struct {
     }
     fn text(self: *const Self) []const u8 {
         return self.m_text orelse "";
+    }
+    fn next(self: *Self) Token {
+        self.m_token = self.yylex();
+        if (self.m_token == Token.Error) {
+            console.panic("unexpected character {}\n", .{self.m_char});
+        }
+        return self.m_token;
     }
     fn yyinp(self: *Self) void {
         self.m_char = string.codePointAt(self.m_index) orelse 0;
@@ -298,7 +305,10 @@ const Lexer = struct {
         }
     }
 };
-
+const exp = @import("./Expr.zig");
+const Expr = exp.Expr;
+const alloc = @import("./alloc.zig");
+const std = @import("std");
 pub const ExprParser = struct {
     lex: Lexer,
     const Self = @This();
@@ -308,6 +318,139 @@ pub const ExprParser = struct {
         };
         self.lex.next();
         return self;
+    }
+    pub fn parse(self: *const Self) *Expr {
+        return self.parseLogicalOr();
+    }
+    fn parseLiteral(self: *Self) *Expr {
+        switch (self.lex.token()) {
+            Token.Number => {
+                const expr = exp.NumberExpr.new(self.lex.text());
+                self.lex.next();
+                return expr;
+            },
+            Token.String => {
+                const expr = exp.StringExpr.new(self.lex.text());
+                self.lex.next();
+                return expr;
+            },
+            else => console.panic("Syntax Error\n", .{}),
+        }
+    }
+    fn parsePrimary(self: *Self) *Expr {
+        switch (self.lex.token()) {
+            Token.Identifier => {
+                const text = self.lex.text();
+                if (std.mem.eql(u8, text, "has")) {
+                    self.lex.next();
+                    self.yyexpect(Token.LBracket);
+                    const hasAttributes = self.lex.text();
+                    self.yyexpect(Token.Identifier);
+                    self.yyexpect(Token.RParen);
+                    return exp.HasAttributeExpr.new(hasAttributes);
+                } else if (std.mem.eql(u8, text, "length")) {
+                    self.lex.next();
+                    self.yyexpect(Token.LParen);
+                    const value = self.parseLogicalOr();
+                    self.yyexpect(Token.RParen);
+                    var args = std.ArrayList(*Expr).init(alloc.get());
+                    args.append(value) catch unreachable;
+                    return exp.CallExpr.new("length", args);
+                } else {
+                    const expr = exp.VarExpr.new(text);
+                    self.lex.next();
+                    return expr;
+                }
+            },
+            Token.LParen => {
+                self.lex.next();
+                const expr = self.parseLogicalOr();
+                self.yyexpect(Token.RParen);
+                return expr;
+            },
+            else => return self.parseLiteral(),
+        }
+    }
+    fn parseUnary(self: *Self) *Expr {
+        if (self.lex.token() == Token.Exclaim) {
+            self.lex.next();
+            const args = std.ArrayList(*Expr).init(alloc.get());
+            args.append(self.parseUnary()) catch unreachable;
+            return exp.CallExpr.new("!", args);
+        }
+        return self.parsePrimary();
+    }
+    fn parseRelational(self: *Self) *Expr {
+        var expr = self.parseUnary();
+        while (true) {
+            if (self.lex.token() == Token.Identifier and std.mem.eql(u8, self.lex.text(), "in")) {
+                self.lex.next();
+                self.yyexpect(Token.LBracket);
+                const elements = std.ArrayList(*Expr).init(alloc.get());
+                elements.append(self.parseLiteral()) catch unreachable;
+                while (self.lex.token() == Token.Comma) {
+                    self.lex.next();
+                    elements.append(self.parseLiteral()) catch unreachable;
+                }
+                self.yyexpect(Token.RBracket);
+                const args = std.ArrayList(*Expr).init(alloc.get());
+                args.append(expr) catch unreachable;
+                const values = std.ArrayList(std.json.Value).init(alloc.get());
+                defer values.deinit();
+                for (elements) |element| {
+                    values.append(element.getValue()) catch unreachable;
+                }
+                args.append(exp.createLiteralExprFromValue(values)) catch unreachable;
+                expr = exp.CallExpr.new("in", args);
+            } else {
+                const op = getRelationalOp(self.lex.token());
+                if (op == null) break;
+                self.lex.next();
+                const right = self.parseUnary();
+                const args = std.ArrayList(*Expr).init(alloc.get());
+                args.append(expr) catch unreachable;
+                args.append(right) catch unreachable;
+                expr = exp.CallExpr.new(op, args);
+            }
+        }
+        return expr;
+    }
+    fn parseEquality(self: *Self) *Expr {
+        var expr = self.parseEquality();
+        while (true) {
+            var op = getEqualityOp(self.lex.token());
+            if (op == null) break;
+            if (std.mem.eql(u8, op, "!=")) {
+                op = "in";
+            }
+            self.lex.next();
+            const right = self.parseRelational();
+            const args = std.ArrayList(*Expr).init(alloc.get());
+            args.append(expr) catch unreachable;
+            args.append(right) catch unreachable;
+            expr = exp.CallExpr.new(op, args);
+        }
+        return expr;
+    }
+    fn parseLogicalAnd(self: *Self) *Expr {
+        const expr = self.parseEquality();
+        if (self.lex.token() != Token.AmpAmp) return expr;
+        const expressions = std.ArrayList(*Expr).init(alloc.get());
+        while (self.lex.token() == Token.AmpAmp) {
+            self.lex.next();
+            expressions.append(self.parseEquality()) catch unreachable;
+        }
+        return exp.CallExpr.new("all", expressions);
+    }
+    fn parseLogicalOr(self: *Self) *Expr {
+        const expr = self.parseLogicalAnd();
+        if (self.lex.token() != Token.BarBar) return expr;
+        const expressions = std.ArrayList(*Expr).init(alloc.get());
+        while (self.lex.token() == Token.BarBar) {
+            self.lex.next();
+            expressions.append(self.parseLogicalAnd()) catch unreachable;
+        }
+        return exp.CallExpr.new("any", expressions);
     }
     fn yyexpect(self: Self, token: Token) void {
         if (self.lex.token() != token) {

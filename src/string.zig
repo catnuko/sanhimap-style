@@ -1,9 +1,12 @@
 const std = @import("std");
+pub inline fn eql(str1: []const u8, str2: []const u8) bool {
+    return std.mem.eql(u8, str1, str2);
+}
 //https://github.com/JakubSzark/zig-string/blob/master/zig-string.zig
-pub fn codePointAt(string: []const u8, index: usize)?u21{
-    const real_index = getIndex(string,index,true) orelse unreachable;
+pub fn codePointAt(string: []const u8, index: usize) ?u21 {
+    const real_index = getIndex(string, index, true) orelse unreachable;
     const size = getUTF8Size(string[real_index]);
-    return std.unicode.utf8Decode(string[real_index..real_index+size]) catch null;
+    return std.unicode.utf8Decode(string[real_index .. real_index + size]) catch null;
 }
 /// Returns the real index of a unicode string literal
 pub fn getIndex(string: []const u8, index: usize, real: bool) ?usize {
@@ -33,76 +36,69 @@ pub inline fn isUTF8Byte(byte: u8) bool {
 pub fn substring(string: []const u8, start: usize, end: usize) []const u8 {
     const vStart = @min(start, end);
     const vEnd = @max(start, end);
-    if(vStart==vEnd) return "";
-    if(getIndex(string,vStart,true))|rStart|{
-        if(getIndex(string,vEnd,true))|rEnd|{
+    if (vStart == vEnd) return "";
+    if (getIndex(string, vStart, true)) |rStart| {
+        if (getIndex(string, vEnd, true)) |rEnd| {
             return string[rStart..rEnd];
-        }else{
-            std.debug.print("end index out of range\n",.{});
-            return ""
+        } else {
+            std.debug.print("end index out of range\n", .{});
+            return "";
         }
-    }else{
-        std.debug.print("start index out of range\n",.{});
-        return ""
+    } else {
+        std.debug.print("start index out of range\n", .{});
+        return "";
     }
 }
-pub fn includes(string:[]const u8,needle:[]const u8)bool{
-    if(string.len == 0 or needle.len == 0) return false;
+pub fn includes(string: []const u8, needle: []const u8) bool {
+    if (string.len == 0 or needle.len == 0) return false;
     const found_index = std.mem.indexOf(u8, string, needle);
     if (found_index == null) {
         return false;
-    } else{
+    } else {
         return true;
-    };
+    }
+}
+pub fn startsWith(left: []const u8, right: []const u8) bool {
+    const index = std.mem.indexOf(u8, left[0..], right);
+    return index == 0;
+}
+pub fn endsWith(left: []const u8, right: []const u8) bool {
+    const index = std.mem.lastIndexOf(u8, left[0..], right);
+    const i: usize = left.len - right.len;
+    return index == i;
 }
 test "string.substring" {
     const str = "你好,hello,world";
     {
         const expected = "你好";
-        const result = substring(str,0,2);
+        const result = substring(str, 0, 2);
         try std.testing.expectEqualStrings(expected, result);
     }
     {
         const expected = "你好";
-        const result = substring(str,2,0);
+        const result = substring(str, 2, 0);
         try std.testing.expectEqualStrings(expected, result);
     }
     {
         const expected = "hello";
-        const result = substring(str,3,8);
+        const result = substring(str, 3, 8);
         try std.testing.expectEqualStrings(expected, result);
     }
     {
         const expected = "hello";
-        const result = substring(str,8,3);
+        const result = substring(str, 8, 3);
         try std.testing.expectEqualStrings(expected, result);
     }
 }
 test "string.codePointAt" {
     const str = "你好,hello,world";
     var results = [1]u21{0} ** 14;
-    for(0..14) |i| {
-        results[i] = codePointAt(str,i) orelse unreachable;
+    for (0..14) |i| {
+        results[i] = codePointAt(str, i) orelse unreachable;
     }
     const expected = [_]u21{ '你', '好', ',', 'h', 'e', 'l', 'l', 'o', ',', 'w', 'o', 'r', 'l', 'd' };
     try std.testing.expectEqualSlices(u21, &expected, &results);
-    const expected2 = [_]u21{ 
-        20320,
-        22909,
-        44,
-        104,
-        101,
-        108,
-        108,
-        111,
-        44,
-        119,
-        111,
-        114,
-        108,
-        100
-    };
+    const expected2 = [_]u21{ 20320, 22909, 44, 104, 101, 108, 108, 111, 44, 119, 111, 114, 108, 100 };
     try std.testing.expectEqualSlices(u21, &expected2, &results);
     try std.testing.expectEqualSlices(u21, &expected, &expected2);
-    
 }
