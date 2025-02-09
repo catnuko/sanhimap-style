@@ -49,6 +49,15 @@ pub fn substring(string: []const u8, start: usize, end: usize) []const u8 {
         return "";
     }
 }
+pub fn includesOfStrings(string: [][]const u8, needle: []const u8) bool {
+    if (string.len == 0 or needle.len == 0) return false;
+    for (string) |s| {
+        if (includes(s, needle)) {
+            return true;
+        }
+    }
+    return false;
+}
 pub fn includes(string: []const u8, needle: []const u8) bool {
     if (string.len == 0 or needle.len == 0) return false;
     const found_index = std.mem.indexOf(u8, string, needle);

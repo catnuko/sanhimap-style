@@ -4,6 +4,7 @@ const Value = std.json.Value;
 const ExprEvaluatorContext = @import("../ExprEvaluator.zig").ExprEvaluatorContext;
 const exp = @import("../Expr.zig");
 const Expr = exp.Expr;
+const Tag = @import("../json.zig").Tag;
 const CallExpr = exp.CallExpr;
 const log = @import("../console.zig");
 
@@ -12,12 +13,12 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "^",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                const b = context.evaluate(call.args[1]);
-                if (@TypeOf(a) != .float or @TypeOf(b) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                const b = context.evaluate(call.args.items[1]);
+                if (@intFromEnum(a) != Tag.float or @intFromEnum(b) != Tag.float) {
                     log.panic("invalid operands '{any}' and '{any}' for operator '^'\n", .{ a, b });
                 }
-                return .{ .float = std.math.pow(a, b) };
+                return .{ .float = std.math.pow(f64, a.float, b.float) };
             }
         }.func,
     },
@@ -27,14 +28,14 @@ pub const MathOperators = [_]OperatorDescriptor{
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
                 if (call.args.items.len == 1) {
                     const value = context.evaluate(call.args.items[0]);
-                    if (@TypeOf(value) != .float) {
+                    if (@intFromEnum(value) != Tag.float) {
                         log.panic("invalid operands '{any}' for operator '^'\n", .{value});
                     }
                     return .{ .float = -value.float };
                 }
-                const a = context.evaluate(call.args[0]);
-                const b = context.evaluate(call.args[1]);
-                if (@TypeOf(a) != .float or @TypeOf(b) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                const b = context.evaluate(call.args.items[1]);
+                if (@intFromEnum(a) != Tag.float or @intFromEnum(b) != Tag.float) {
                     log.panic("invalid operands '{any}' and '{any}' for operator '-'\n", .{ a, b });
                 }
                 return .{ .float = a.float - b.float };
@@ -45,9 +46,9 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "/",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                const b = context.evaluate(call.args[1]);
-                if (@TypeOf(a) != .float or @TypeOf(b) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                const b = context.evaluate(call.args.items[1]);
+                if (@intFromEnum(a) != Tag.float or @intFromEnum(b) != Tag.float) {
                     log.panic("invalid operands '{any}' and '{any}' for operator '/'\n", .{ a, b });
                 }
                 return .{ .float = a.float / b.float };
@@ -58,12 +59,12 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "%",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                const b = context.evaluate(call.args[1]);
-                if (@TypeOf(a) != .float or @TypeOf(b) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                const b = context.evaluate(call.args.items[1]);
+                if (@intFromEnum(a) != Tag.float or @intFromEnum(b) != Tag.float) {
                     log.panic("invalid operands '{any}' and '{any}' for operator '%'\n", .{ a, b });
                 }
-                return .{ .float = a.float % b.float };
+                return .{ .float = @mod(a.float, b.float) };
             }
         }.func,
     },
@@ -74,7 +75,7 @@ pub const MathOperators = [_]OperatorDescriptor{
                 var sum: f64 = 0;
                 for (call.args.items) |item| {
                     const value = context.evaluate(item);
-                    if (@TypeOf(value) != .float) {
+                    if (@intFromEnum(value) != Tag.float) {
                         log.panic("invalid operands '{any}' for operator '+'\n", .{value});
                     }
                     sum += value.float;
@@ -90,7 +91,7 @@ pub const MathOperators = [_]OperatorDescriptor{
                 var sum: f64 = 0;
                 for (call.args.items) |item| {
                     const value = context.evaluate(item);
-                    if (@TypeOf(value) != .float) {
+                    if (@intFromEnum(value) != Tag.float) {
                         log.panic("invalid operands '{any}' for operator '*'\n", .{value});
                     }
                     sum *= value.float;
@@ -103,11 +104,11 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "abs",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'abs'\n", .{a});
                 }
-                return .{ .float = std.math.abs(a.float) };
+                return .{ .float = @abs(a.float) };
             }
         }.func,
     },
@@ -115,8 +116,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "acos",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'acos'\n", .{a});
                 }
                 return .{ .float = std.math.acos(a.float) };
@@ -127,8 +128,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "asin",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'asin'\n", .{a});
                 }
                 return .{ .float = std.math.asin(a.float) };
@@ -139,8 +140,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "atan",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'atan'\n", .{a});
                 }
                 return .{ .float = std.math.atan(a.float) };
@@ -151,8 +152,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "ceil",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'ceil'\n", .{a});
                 }
                 return .{ .float = std.math.ceil(a.float) };
@@ -163,8 +164,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "cos",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'cos'\n", .{a});
                 }
                 return .{ .float = std.math.cos(a.float) };
@@ -183,8 +184,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "floor",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'floor'\n", .{a});
                 }
                 return .{ .float = std.math.floor(a.float) };
@@ -195,8 +196,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "ln",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'ln'\n", .{a});
                 }
                 return .{ .float = std.math.log(f64, std.math.e, a.float) };
@@ -207,8 +208,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "ln2",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'ln2'\n", .{a});
                 }
                 return .{ .float = std.math.log(f64, 2, a.float) };
@@ -219,8 +220,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "log10",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'log10'\n", .{a});
                 }
                 return .{ .float = std.math.log(f64, 10, a.float) };
@@ -234,7 +235,7 @@ pub const MathOperators = [_]OperatorDescriptor{
                 var max: f64 = 0;
                 for (call.args.items) |item| {
                     const value = context.evaluate(item);
-                    if (@TypeOf(value) != .float) {
+                    if (@intFromEnum(value) != Tag.float) {
                         log.panic("invalid operands '{any}' for operator 'max'\n", .{value});
                     }
                     if (max < value.float) {
@@ -252,7 +253,7 @@ pub const MathOperators = [_]OperatorDescriptor{
                 var min: f64 = std.math.floatMax(f64);
                 for (call.args.items) |item| {
                     const value = context.evaluate(item);
-                    if (@TypeOf(value) != .float) {
+                    if (@intFromEnum(value) != Tag.float) {
                         log.panic("invalid operands '{any}' for operator 'min'\n", .{value});
                     }
                     if (min < value.float) {
@@ -267,13 +268,13 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "clamp",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const v = context.evaluate(call.args[0]);
-                const min = context.evaluate(call.args[1]);
-                const max = context.evaluate(call.args[2]);
-                if (@TypeOf(v) != .float or @TypeOf(min) != .float or @TypeOf(max) != .float) {
+                const v = context.evaluate(call.args.items[0]);
+                const min = context.evaluate(call.args.items[1]);
+                const max = context.evaluate(call.args.items[2]);
+                if (@intFromEnum(v) != Tag.float or @intFromEnum(min) != Tag.float or @intFromEnum(max) != Tag.float) {
                     log.panic("invalid operands '{any}' and '{any}' and '{any}' for operator 'clamp'\n", .{ v, min, max });
                 }
-                return .{ .float = std.math.clamp(v, min, max) };
+                return .{ .float = std.math.clamp(v, min.float, max.float) };
             }
         }.func,
     },
@@ -289,8 +290,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "round",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'round'\n", .{a});
                 }
                 return .{ .float = std.math.round(a.float) };
@@ -301,8 +302,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "sin",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'sin'\n", .{a});
                 }
                 return .{ .float = std.math.sin(a.float) };
@@ -313,8 +314,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "sqrt",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'sqrt'\n", .{a});
                 }
                 return .{ .float = std.math.sqrt(a.float) };
@@ -325,8 +326,8 @@ pub const MathOperators = [_]OperatorDescriptor{
         .name = "tan",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .float) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.float) {
                     log.panic("invalid operands '{any}' for operator 'tan'\n", .{a});
                 }
                 return .{ .float = std.math.tan(a.float) };

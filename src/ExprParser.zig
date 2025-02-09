@@ -319,10 +319,10 @@ pub const ExprParser = struct {
         self.lex.next();
         return self;
     }
-    pub fn parse(self: *const Self) *Expr {
+    pub fn parse(self: *const Self) Expr {
         return self.parseLogicalOr();
     }
-    fn parseLiteral(self: *Self) *Expr {
+    fn parseLiteral(self: *Self) Expr {
         switch (self.lex.token()) {
             Token.Number => {
                 const expr = exp.NumberExpr.new(self.lex.text());
@@ -337,7 +337,7 @@ pub const ExprParser = struct {
             else => console.panic("Syntax Error\n", .{}),
         }
     }
-    fn parsePrimary(self: *Self) *Expr {
+    fn parsePrimary(self: *Self) Expr {
         switch (self.lex.token()) {
             Token.Identifier => {
                 const text = self.lex.text();
@@ -353,7 +353,7 @@ pub const ExprParser = struct {
                     self.yyexpect(Token.LParen);
                     const value = self.parseLogicalOr();
                     self.yyexpect(Token.RParen);
-                    var args = std.ArrayList(*Expr).init(alloc.get());
+                    var args = std.ArrayList(Expr).init(alloc.get());
                     args.append(value) catch unreachable;
                     return exp.CallExpr.new("length", args);
                 } else {
@@ -371,29 +371,29 @@ pub const ExprParser = struct {
             else => return self.parseLiteral(),
         }
     }
-    fn parseUnary(self: *Self) *Expr {
+    fn parseUnary(self: *Self) Expr {
         if (self.lex.token() == Token.Exclaim) {
             self.lex.next();
-            const args = std.ArrayList(*Expr).init(alloc.get());
+            var args = std.ArrayList(Expr).init(alloc.get());
             args.append(self.parseUnary()) catch unreachable;
             return exp.CallExpr.new("!", args);
         }
         return self.parsePrimary();
     }
-    fn parseRelational(self: *Self) *Expr {
+    fn parseRelational(self: *Self) Expr {
         var expr = self.parseUnary();
         while (true) {
             if (self.lex.token() == Token.Identifier and std.mem.eql(u8, self.lex.text(), "in")) {
                 self.lex.next();
                 self.yyexpect(Token.LBracket);
-                const elements = std.ArrayList(*Expr).init(alloc.get());
+                const elements = std.ArrayList(Expr).init(alloc.get());
                 elements.append(self.parseLiteral()) catch unreachable;
                 while (self.lex.token() == Token.Comma) {
                     self.lex.next();
                     elements.append(self.parseLiteral()) catch unreachable;
                 }
                 self.yyexpect(Token.RBracket);
-                const args = std.ArrayList(*Expr).init(alloc.get());
+                var args = std.ArrayList(Expr).init(alloc.get());
                 args.append(expr) catch unreachable;
                 const values = std.ArrayList(std.json.Value).init(alloc.get());
                 defer values.deinit();
@@ -407,7 +407,7 @@ pub const ExprParser = struct {
                 if (op == null) break;
                 self.lex.next();
                 const right = self.parseUnary();
-                const args = std.ArrayList(*Expr).init(alloc.get());
+                var args = std.ArrayList(Expr).init(alloc.get());
                 args.append(expr) catch unreachable;
                 args.append(right) catch unreachable;
                 expr = exp.CallExpr.new(op, args);
@@ -415,7 +415,7 @@ pub const ExprParser = struct {
         }
         return expr;
     }
-    fn parseEquality(self: *Self) *Expr {
+    fn parseEquality(self: *Self) Expr {
         var expr = self.parseEquality();
         while (true) {
             var op = getEqualityOp(self.lex.token());
@@ -425,27 +425,27 @@ pub const ExprParser = struct {
             }
             self.lex.next();
             const right = self.parseRelational();
-            const args = std.ArrayList(*Expr).init(alloc.get());
+            var args = std.ArrayList(Expr).init(alloc.get());
             args.append(expr) catch unreachable;
             args.append(right) catch unreachable;
             expr = exp.CallExpr.new(op, args);
         }
         return expr;
     }
-    fn parseLogicalAnd(self: *Self) *Expr {
+    fn parseLogicalAnd(self: *Self) Expr {
         const expr = self.parseEquality();
         if (self.lex.token() != Token.AmpAmp) return expr;
-        const expressions = std.ArrayList(*Expr).init(alloc.get());
+        const expressions = std.ArrayList(Expr).init(alloc.get());
         while (self.lex.token() == Token.AmpAmp) {
             self.lex.next();
             expressions.append(self.parseEquality()) catch unreachable;
         }
         return exp.CallExpr.new("all", expressions);
     }
-    fn parseLogicalOr(self: *Self) *Expr {
+    fn parseLogicalOr(self: *Self) Expr {
         const expr = self.parseLogicalAnd();
         if (self.lex.token() != Token.BarBar) return expr;
-        const expressions = std.ArrayList(*Expr).init(alloc.get());
+        const expressions = std.ArrayList(Expr).init(alloc.get());
         while (self.lex.token() == Token.BarBar) {
             self.lex.next();
             expressions.append(self.parseLogicalAnd()) catch unreachable;

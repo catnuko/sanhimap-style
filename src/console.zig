@@ -127,7 +127,7 @@ pub fn warn(comptime fmt: []const u8, args: anytype) void {
 pub fn log(comptime fmt: []const u8, args: anytype) void {
     c.stdPrint(fmt, args);
 }
-pub fn panic(comptime fmt: []const u8, args: anytype) void {
+pub fn panic(comptime fmt: []const u8, args: anytype) noreturn {
     c.stdColored(.red, fmt, args);
     @panic("panic");
 }

@@ -2,6 +2,7 @@ const OperatorDescriptor = @import("../ExprEvaluator.zig").OperatorDescriptor;
 const std = @import("std");
 const Value = std.json.Value;
 const ExprEvaluatorContext = @import("../ExprEvaluator.zig").ExprEvaluatorContext;
+const Tag = @import("../json.zig").Tag;
 const exp = @import("../Expr.zig");
 const Expr = exp.Expr;
 const CallExpr = exp.CallExpr;
@@ -16,7 +17,7 @@ pub fn destroyjoinedCombinations(allocator: std.mem.Allocator, stringList: *Stri
 }
 pub fn joinCombinations(allocator: std.mem.Allocator, combinations: StringList) StringList {
     std.mem.sort(String, &combinations, {}, struct {
-        fn compare(context: void, a: String, b: String) bool {
+        fn compare(_: void, a: String, b: String) bool {
             return a.len < b.len;
         }
     }.compare);
@@ -48,7 +49,7 @@ pub fn getAllCombinations(allocator: std.mem.Allocator, input: StringList, index
     combinations.append(newStringList) catch unreachable;
     return combinations;
 }
-fn stringifyKeyValue(allocator: std.mem.Allocator, key: String, value: Value) String {
+fn stringifyKeyValue(allocator: std.mem.Allocator, _: String, value: Value) String {
     var string = std.ArrayList(u8).init(allocator);
     std.json.stringify(value, .{}, string.writer()) catch unreachable;
     return string;
@@ -67,14 +68,14 @@ pub fn getKeyCombinations(allocator: std.mem.Allocator, lookupExpr: *exp.LookupE
     }
     //descending
     std.mem.sort(String, result.items, {}, struct {
-        fn compare(context: void, a: String, b: String) bool {
+        fn compare(_: void, a: String, b: String) bool {
             return a.len > b.len;
         }
     }.compare);
     return joinCombinations(allocator, getAllCombinations(allocator, result, 0));
 }
 
-pub fn searchLookupMap(keys: []String, map: Value.Object) ?Value.Object {
+pub fn searchLookupMap(keys: []String, map: *std.json.ObjectMap) ?std.json.ObjectMap {
     for (keys) |key| {
         const matchAttributes = map.get(key);
         if (matchAttributes) |attributes| {
@@ -89,24 +90,24 @@ pub const MiscOperators = [_]OperatorDescriptor{
         .name = "length",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                const a = context.evaluate(call.args[0]);
-                if (@TypeOf(a) != .String) {
+                const a = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(a) != Tag.string) {
                     log.panic("invalid operands '{any}' for operator 'length'\n", .{a});
                 }
-                return .{ .int = a.String.len };
+                return .{ .integer = @intCast(a.string.len) };
             }
         }.func,
     },
     .{
         .name = "lookup",
         .call = struct {
-            fn func(context: *ExprEvaluatorContext, lookup: *exp.LookupExpr) Value {
-                if (lookup.callExpr.args.items.len == 0) {
+            fn func(_: *ExprEvaluatorContext, call: *exp.CallExpr) Value {
+                if (call.args.items.len == 0) {
                     log.panic("missing lookup table\n", .{});
                 }
-                const keys = call.args[0];
-                const map = call.args[1];
-                if (@TypeOf(keys) != .array or @TypeOf(map) != .object) {
+                const keys = call.args.items[0];
+                const map = call.args.items[1];
+                if (@intFromEnum(keys) != Tag.array or @intFromEnum(map) != Tag.object) {
                     log.panic("invalid operands '{any}' and '{any}' for operator 'lookup'\n", .{ keys, map });
                 }
                 const result = searchLookupMap(keys.array, map.object);
@@ -118,9 +119,9 @@ pub const MiscOperators = [_]OperatorDescriptor{
         .name = "coalesce",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, call: *CallExpr) Value {
-                for (call.args) |arg| {
+                for (call.args.items) |arg| {
                     const value = context.evaluate(arg);
-                    if (value != .null) {
+                    if (@intFromEnum(value) != Tag.null) {
                         return value;
                     }
                 }
@@ -129,13 +130,3 @@ pub const MiscOperators = [_]OperatorDescriptor{
         }.func,
     },
 };
-
-fn searchLookupMap(keys: []Value, map: Value.Object) ?Value.Object {
-    for (keys) |key| {
-        const matchAttributes = map.get(key);
-        if (matchAttributes) {
-            return matchAttributes;
-        }
-    }
-    return null;
-}

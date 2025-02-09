@@ -1,24 +1,25 @@
 const std = @import("std");
 const RGBA = @import("./RGBA.zig");
 
-pub const HEX_FULL_CHANNEL: f64 = 0xff;
-pub const HEX_RGB_MASK: f64 = 0xffffff;
-pub const HEX_TRGB_MASK: f64 = 0xffffffff;
-pub const SHIFT_TRANSPARENCY: f64 = 24;
-pub const SHIFT_RED: f64 = 16;
-pub const SHIFT_GREEN: f64 = 8;
-pub const SHIFT_BLUE: f64 = 0;
+pub const HEX_FULL_CHANNEL: u32 = 0xff;
+pub const HEX_RGB_MASK: u32 = 0xffffff;
+pub const HEX_TRGB_MASK: u32 = 0xffffffff;
+pub const SHIFT_TRANSPARENCY: u32 = 24;
+pub const SHIFT_RED: u32 = 16;
+pub const SHIFT_GREEN: u32 = 8;
+pub const SHIFT_BLUE: u32 = 0;
 
-pub fn getHexFromRgba(r: f64, g: f64, b: f64, a: f64) f64 {
+pub fn getHexFromRgba(r: f64, g: f64, b: f64, a: f64) u32 {
     std.debug.assert(r >= 0.0 and r <= 1.0 and g >= 0.0 and g <= 1.0 and b >= 0.0 and b <= 1.0 and a >= 0.0 and a <= 1.0);
-    const t = HEX_FULL_CHANNEL - std.math.floor(a * HEX_FULL_CHANNEL);
-    return ((t << SHIFT_TRANSPARENCY) ^
-        ((r * HEX_FULL_CHANNEL) << SHIFT_RED) ^
-        ((g * HEX_FULL_CHANNEL) << SHIFT_GREEN) ^
-        ((b * HEX_FULL_CHANNEL) << SHIFT_BLUE));
+    const t: u32 = @intFromFloat(HEX_FULL_CHANNEL - std.math.floor(a * HEX_FULL_CHANNEL));
+    const v: u32 = ((t << SHIFT_TRANSPARENCY) ^
+        (@as(u32, @intFromFloat(r * HEX_FULL_CHANNEL)) << SHIFT_RED) ^
+        (@as(u32, @intFromFloat(g * HEX_FULL_CHANNEL)) << SHIFT_GREEN) ^
+        (@as(u32, @intFromFloat(b * HEX_FULL_CHANNEL)) << SHIFT_BLUE));
+    return @floatFromInt(v);
 }
 
-pub fn getHexFromRgb(r: f64, g: f64, b: f64) f64 {
+pub fn getHexFromRgb(r: f64, g: f64, b: f64) u32 {
     std.debug.assert(r >= 0.0 and r <= 1.0 and g >= 0.0 and g <= 1.0 and b >= 0.0 and b <= 1.0);
     return ((HEX_FULL_CHANNEL << SHIFT_TRANSPARENCY) ^
         ((r * HEX_FULL_CHANNEL) << SHIFT_RED) ^
@@ -26,7 +27,7 @@ pub fn getHexFromRgb(r: f64, g: f64, b: f64) f64 {
         ((b * HEX_FULL_CHANNEL) << SHIFT_BLUE));
 }
 
-pub fn getHexFromHsl(h: f64, s: f64, l: f64) f64 {
+pub fn getHexFromHsl(h: f64, s: f64, l: f64) u32 {
     std.debug.assert(h >= 0.0 and h <= 1.0 and s >= 0.0 and s <= 1.0 and l >= 0.0 and l <= 1.0);
     var r: f64 = 0;
     var g: f64 = 0;
@@ -53,7 +54,7 @@ fn hueToRgb(p: f64, q: f64, t: f64) f64 {
     return p;
 }
 
-pub fn getRgbaFromHex(hex: f64) RGBA {
+pub fn getRgbaFromHex(hex: u32) RGBA {
     std.debug.assert((hex & ~HEX_TRGB_MASK) == 0);
     const r: f64 = ((hex >> SHIFT_RED) & HEX_FULL_CHANNEL) / HEX_FULL_CHANNEL;
     const g: f64 = ((hex >> SHIFT_GREEN) & HEX_FULL_CHANNEL) / HEX_FULL_CHANNEL;
@@ -62,15 +63,15 @@ pub fn getRgbaFromHex(hex: f64) RGBA {
     return RGBA.new(r, g, b, a);
 }
 
-pub fn hasAlphaInHex(hex: f64) bool {
+pub fn hasAlphaInHex(hex: u32) bool {
     std.debug.assert((hex & ~HEX_TRGB_MASK) == 0);
     return (hex >> SHIFT_TRANSPARENCY) != 0;
 }
-pub fn getAlphaFromHex(hex: f64) f64 {
-    std.debug.assert((hex & ~HEX_TRGB_MASK) == 0, "Wrong hex format");
+pub fn getAlphaFromHex(hex: u32) f64 {
+    std.debug.assert((hex & ~HEX_TRGB_MASK) == 0);
     return (HEX_FULL_CHANNEL - (hex >> SHIFT_TRANSPARENCY)) / HEX_FULL_CHANNEL;
 }
-pub fn removeAlphaFromHex(hex: f64) f64 {
-    std.debug.assert((hex & ~HEX_TRGB_MASK) == 0, "Wrong hex format");
+pub fn removeAlphaFromHex(hex: u32) u32 {
+    std.debug.assert((hex & ~HEX_TRGB_MASK) == 0);
     return hex & HEX_RGB_MASK;
 }

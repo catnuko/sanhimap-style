@@ -1,4 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
 
-test "basic add functionality" {}
+test {
+    _ = @import("./test/Expr.zig");
+    _ = @import("./StringEncodedNumeral.zig");
+}

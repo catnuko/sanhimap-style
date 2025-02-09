@@ -13,8 +13,8 @@ pub const MapEnv = struct {
         if (self.entries.get(name)) |value| {
             return value;
         } else {
-            if (self.parent != null) {
-                return self.parent.lookup(name);
+            if (self.parent) |p| {
+                return p.lookup(name);
             }
             return null;
         }

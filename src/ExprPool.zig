@@ -47,40 +47,40 @@ pub const ExprPool = struct {
         self.m_stepExprs.deinit();
         self.m_callExprs.deinit();
     }
-    pub fn exprVisitor(self: *Self) exp.ExprVisitor(*Expr, void) {
-        return exp.ExprVisitor(*Expr, void).new(self);
+    pub fn exprVisitor(self: *Self) exp.ExprVisitor(Expr, void) {
+        return exp.ExprVisitor(Expr, void).new(self);
     }
-    pub fn add(self: *Self, expr: *Expr) *Expr {
-        return expr.accept(*Expr, void, self, null);
+    pub fn add(self: *Self, expr: Expr) Expr {
+        return expr.accept(Expr, void, self, null);
     }
-    fn visitNullLiteralExpr(_: *Self, _: exp.NullLiteralExpr, _: void) *Expr {
+    fn visitNullLiteralExpr(_: *Self, _: exp.NullLiteralExpr, _: void) Expr {
         return exp.NullLiteralexp.instance;
     }
-    fn visitBooleanLiteralExpr(self: *Self, expr: *exp.BooleanLiteralExpr, _: void) *Expr {
+    fn visitBooleanLiteralExpr(self: *Self, expr: *exp.BooleanLiteralExpr, _: void) Expr {
         const e = self.m_booleanLiterals.get(exp.value);
         if (e) |v| return v;
         self.m_booleanLiterals.put(exp.value, exp.value) catch unreachable;
         return expr;
     }
-    fn visitNumberLiteralExpr(self: *Self, expr: *exp.NumberLiteralExpr, _: void) *Expr {
+    fn visitNumberLiteralExpr(self: *Self, expr: *exp.NumberLiteralExpr, _: void) Expr {
         const e = self.m_numberLiterals.get(exp.value);
         if (e) |v| return v;
         self.m_numberLiterals.put(exp.value, exp.value) catch unreachable;
         return expr;
     }
-    fn visitStringLiteralExpr(self: *Self, expr: *exp.StringLiteralExpr, _: void) *Expr {
+    fn visitStringLiteralExpr(self: *Self, expr: *exp.StringLiteralExpr, _: void) Expr {
         const e = self.m_stringLiterals.get(exp.value);
         if (e) |v| return v;
         self.m_stringLiterals.put(exp.value, exp.value) catch unreachable;
         return expr;
     }
-    fn visitObjectLiteralExpr(self: *Self, expr: *exp.ObjectLiteralExpr, _: void) *Expr {
+    fn visitObjectLiteralExpr(self: *Self, expr: *exp.ObjectLiteralExpr, _: void) Expr {
         const e = self.m_stringLiterals.get(exp.value);
         if (e) |v| return v;
         self.m_objectLiterals.put(exp.value, expr) catch unreachable;
         return expr;
     }
-    fn visitArrayLiteralExpr(self: *Self, expr: *exp.ArrayLiteralExpr, _: void) *Expr {
+    fn visitArrayLiteralExpr(self: *Self, expr: *exp.ArrayLiteralExpr, _: void) Expr {
         const e = self.m_stringLiterals.get(exp.value);
         if (e) |v| return v;
         const array = exp.value;
@@ -106,20 +106,20 @@ pub const ExprPool = struct {
         self.m_arrayLiterals.append(expr) catch unreachable;
         return expr;
     }
-    fn visitVarExpr(self: *Self, expr: *exp.VarExpr, _: void) *Expr {
+    fn visitVarExpr(self: *Self, expr: *exp.VarExpr, _: void) Expr {
         const e = self.m_varExprs.get(exp.value);
         if (e) |v| return v;
         self.m_varExprs.put(exp.value, expr) catch unreachable;
         return expr;
     }
-    fn visitHasAttributeExpr(self: *Self, expr: *exp.HasAttributeExpr, _: void) *Expr {
+    fn visitHasAttributeExpr(self: *Self, expr: *exp.HasAttributeExpr, _: void) Expr {
         const e = self.m_hasAttributeExprs.get(exp.value);
         if (e) |v| return v;
         self.m_hasAttributeExprs.put(exp.value, expr) catch unreachable;
         return expr;
     }
-    fn visitCallExprImpl(self: *Self, expr: *exp.CallExpr, _: void, isLookup: bool) *Expr {
-        const expressions = std.ArrayList(*Expr).init(alloc.get());
+    fn visitCallExprImpl(self: *Self, expr: *exp.CallExpr, _: void, isLookup: bool) Expr {
+        const expressions = std.ArrayList(Expr).init(alloc.get());
         for (expr.branches.items) |item| {
             expressions.append(item.accept(Expr, void, self, null)) catch unreachable;
         }
@@ -128,7 +128,7 @@ pub const ExprPool = struct {
         }
         const calls = self.m_callExprs.get(expr.op) orelse unreachable;
         for (calls) |call| {
-            if (call.args.len != expressions.items.len) {
+            if (call.args.items.len != expressions.items.len) {
                 continue;
             }
             var index = 0;
@@ -154,13 +154,13 @@ pub const ExprPool = struct {
             return e;
         }
     }
-    fn visitCallExpr(self: *Self, expr: *exp.CallExpr, _: void) *Expr {
+    fn visitCallExpr(self: *Self, expr: *exp.CallExpr, _: void) Expr {
         return self.visitCallExprImpl(expr, null, false);
     }
-    fn visitLookupExpr(self: *Self, expr: *exp.LookupExpr, _: void) *Expr {
+    fn visitLookupExpr(self: *Self, expr: *exp.LookupExpr, _: void) Expr {
         return self.visitCallExprImpl(expr, null, true);
     }
-    fn visitMatchExpr(self: *Self, expr: *exp.MatchExpr, _: void) *Expr {
+    fn visitMatchExpr(self: *Self, expr: *exp.MatchExpr, _: void) Expr {
         const value = expr.value.accept(Expr, void, self, null);
         const branches = std.ArrayList(struct {
             label: std.json.Value,
@@ -200,7 +200,7 @@ pub const ExprPool = struct {
         self.m_matchExprs.append(r) catch unreachable;
         return r;
     }
-    fn visitCaseExpr(self: *Self, expr: *exp.CaseExpr, _: void) *Expr {
+    fn visitCaseExpr(self: *Self, expr: *exp.CaseExpr, _: void) Expr {
         const value = expr.value.accept(Expr, void, self, null);
         const branches = std.ArrayList(exp.CaseBranch).init(alloc.get());
         for (expr.branches.items) |item| {
@@ -234,7 +234,7 @@ pub const ExprPool = struct {
         self.m_caseExprs.append(r) catch unreachable;
         return r;
     }
-    fn visitStepExpr(self: *Self, expr: *exp.StepExpr, _: void) *Expr {
+    fn visitStepExpr(self: *Self, expr: *exp.StepExpr, _: void) Expr {
         for (self.m_stepExprs.items) |step| {
             if (step == expr) {
                 return step;
@@ -242,7 +242,7 @@ pub const ExprPool = struct {
         }
         const input = expr.input.accept(Expr, void, self, null);
         const defaultValue = expr.defaultValue.accept(Expr, void, self, null);
-        const stops = std.ArrayList(exp.Stop).init(alloc.get());
+        var stops = std.ArrayList(exp.Stop).init(alloc.get());
         for (expr.stops.items) |stop| {
             const key = stop.key;
             const value = stop.expr.accept(Expr, void, self, null);
@@ -266,14 +266,14 @@ pub const ExprPool = struct {
         self.m_stepExprs.append(e) catch unreachable;
         return e;
     }
-    fn visitInterpolateExpr(self: *Self, expr: *exp.InterpolateExpr, _: void) *Expr {
+    fn visitInterpolateExpr(self: *Self, expr: *exp.InterpolateExpr, _: void) Expr {
         for (self.m_interpolateExprs.items) |step| {
             if (step == expr) {
                 return step;
             }
         }
         const input = expr.input.accept(Expr, void, self, null);
-        const stops = std.ArrayList(exp.Stop).init(alloc.get());
+        var stops = std.ArrayList(exp.Stop).init(alloc.get());
         for (expr.stops.items) |stop| {
             const key = stop.key;
             const value = stop.expr.accept(Expr, void, self, null);

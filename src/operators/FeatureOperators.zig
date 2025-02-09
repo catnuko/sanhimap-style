@@ -5,6 +5,7 @@ const ColorUtils = @import("../ColorUtils.zig");
 const ExprEvaluatorContext = @import("../ExprEvaluator.zig").ExprEvaluatorContext;
 const exp = @import("../Expr.zig");
 const Expr = exp.Expr;
+const Tag = @import("../json.zig").Tag;
 const ExprScope = exp.ExprScope;
 const CallExpr = exp.CallExpr;
 const log = @import("../console.zig");
@@ -15,13 +16,21 @@ pub const FeatureOperators = [_]OperatorDescriptor{
         .name = "geometry-type",
         .call = struct {
             fn func(context: *ExprEvaluatorContext, _: *CallExpr) Value {
-                const geometryType = context.env.lookup("$geometryType") orelse .null;
-                if (string.eql(geometryType, "point")) {
-                    return .{ .string = "Point" };
-                } else if (string.eql(geometryType, "line")) {
-                    return .{ .string = "Line" };
-                } else if (string.eql(geometryType, "polygon")) {
-                    return .{ .string = "Polygon" };
+                const geometryType = context.env.lookup("$geometryType");
+                if (geometryType) |ty| {
+                    if (@intFromEnum(ty) == Tag.string) {
+                        if (string.eql(ty.string, "point")) {
+                            return .{ .string = "Point" };
+                        } else if (string.eql(ty.string, "line")) {
+                            return .{ .string = "Line" };
+                        } else if (string.eql(ty.string, "polygon")) {
+                            return .{ .string = "Polygon" };
+                        } else {
+                            return .null;
+                        }
+                    } else {
+                        return .null;
+                    }
                 } else {
                     return .null;
                 }
@@ -35,13 +44,13 @@ pub const FeatureOperators = [_]OperatorDescriptor{
                 if (context.scope != ExprScope.Dynamic) {
                     return log.panic("feature-state cannot be used in this context\n", .{});
                 }
-                const property = context.evaluate(call.args[0]);
-                if (@TypeOf(property) != .string) {
+                const property = context.evaluate(call.args.items[0]);
+                if (@intFromEnum(property) != Tag.string) {
                     return log.panic("expected the name of the property of the feature state\n", .{});
                 }
                 const state = context.env.lookup("$state");
                 if (state) |s| {
-                    return s.get(property);
+                    return s.object.get(property.string);
                 } else {
                     return .null;
                 }

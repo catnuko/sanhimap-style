@@ -7,6 +7,10 @@
             .url = "https://github.com/JakubSzark/zig-string/archive/refs/heads/master.tar.gz",
             .hash = "1220f5c17a0831fd955d885b409dafe1f972d2f25c6a98173cce6ca67a91c7971813",
         },
+        .zpcre2 = .{
+            .path = "../zpcre2",
+        },
+        .css_color_parser = .{ .path = "../css-color-parser" },
     },
     .paths = .{
         "build.zig",
